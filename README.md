@@ -8,9 +8,9 @@
 
 [解读ASP.NET 5 & MVC6系列（3）：项目发布与部署][3]
 
-[解读ASP.NET 5 & MVC6系列（4）：核心技术与环境配置]
+[解读ASP.NET 5 & MVC6系列（4）：核心技术与环境配置][4]
 
-[解读ASP.NET 5 & MVC6系列（5）：Configuration配置信息管理]
+[解读ASP.NET 5 & MVC6系列（5）：Configuration配置信息管理][5]
 
 [解读ASP.NET 5 & MVC6系列（6）：Middleware详解 ]
 
