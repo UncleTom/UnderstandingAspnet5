@@ -12,9 +12,9 @@
 
 [解读ASP.NET 5 & MVC6系列（5）：Configuration配置信息管理][5]
 
-[解读ASP.NET 5 & MVC6系列（6）：Middleware详解 ]
+[解读ASP.NET 5 & MVC6系列（6）：Middleware详解 ][6]
 
-[解读ASP.NET 5 & MVC6系列（7）：依赖注入]
+[解读ASP.NET 5 & MVC6系列（7）：依赖注入][7]
 
 [解读ASP.NET 5 & MVC6系列（8）：Session与Caching ]
 
