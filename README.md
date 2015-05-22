@@ -16,9 +16,9 @@
 
 [解读ASP.NET 5 & MVC6系列（7）：依赖注入][7]
 
-[解读ASP.NET 5 & MVC6系列（8）：Session与Caching ]
+[解读ASP.NET 5 & MVC6系列（8）：Session与Caching ][8]
 
-[解读ASP.NET 5 & MVC6系列（9）：日志框架]
+[解读ASP.NET 5 & MVC6系列（9）：日志框架][9]
 
 [解读ASP.NET 5 & MVC6系列（10）：Controller与Action]
 
