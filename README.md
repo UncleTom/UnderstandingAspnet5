@@ -20,7 +20,7 @@
 
 [解读ASP.NET 5 & MVC6系列（9）：日志框架][9]
 
-[解读ASP.NET 5 & MVC6系列（10）：Controller与Action]
+[解读ASP.NET 5 & MVC6系列（10）：Controller与Action][10]
 
 [解读ASP.NET 5 & MVC6系列（11）：Routing路由]
 
