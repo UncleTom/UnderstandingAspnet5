@@ -1,0 +1,215 @@
+我们知道在MVC5和之前的版本，两个框架的生命周期是不一样的，在新版MVC6中，MVC Controller/Web API Controller已经合二为一了，本章我们主要讲解Controller和Action的定义与使用，以及在MVC框架中，如何根据路由查询相应的Controller和Action。
+
+#Controller&Action的定义和使用
+在新版MVC6框架中，依然提供了一个Controller基类，在这里除了依然提供了`Url`、`RouteData`、`HttpContent`、`Request`、`Response`以外，还提供了一个`IServiceProvider`类型的`Resovler`属性，该属于是依赖注入的容器，用于获取当前请求作用域内指定类型的实例对象。
+
+其遵守如下规则：
+1. 继承于`Microsoft.AspNet.Mvc.Controller`的类肯定都是控制器，不管有没有Controller后缀。
+2. 不继承`Microsoft.AspNet.Mvc.Controller`的自定义XXXController要作为MVC Controller的话，，则必须要引用`Microsoft.AspNet.Mvc`相关的程序集。
+3. 如果不想让满足上述条件的Controller类作为Controller，需要在该类上加上`NonControllerAttribute`特性。
+4. 同理，如果不想让某个Controller中的方法作为Action，则需要在该方法上加上`NonActionAttribute`特性。
+
+另外还有如下几个特性需要注意：
+
+| 特性  |  描述 |
+| ------------ | ------------ |
+|  ActionNameAttribute | 定义Action的名称（可以和Action方法名不同）  |
+|  AcceptVerbsAttribute  | 定义支持的Http Method名称，支持单个或多个Method。  |
+|  ActivateAttribute | 依赖注入的标记，可以放在具有set权限的属性或字段上。  |
+|  ResponseCacheAttribute | 针对某个Controller或Action设置客户端缓存。  |
+|  RequireHttpsAttribute | 限制必须是Https请求。  |
+|  RemoteAttribute | 标记为Ajax请求，服务器端不验证form表单的验证。  |
+|  NonControllerAttribute | 标记该类不是Controller。  |
+|  NonActionAttribute | 标记该方法不是Action。  |
+
+#Controller的查找机制
+由上述章节，我们知道MVC6不仅支持正常的Controller（继承于Controller基类的子类），也支持POCO的Controller，本节我们就来研究一下Controller的查找原理机制。
+
+首先，要判断一个类是否是Controller必须先确定有多少个程序集里定义了这样的类。`Microsoft.AspNet.Mvc`命名空间下的`IAssemblyProvider`接口就是覆盖查找所有可能定义Controller的程序集，该接口的默认实现是`DefaultAssemblyProvider`类，在该类中，设置的必要条件是，定义了MVC的Controller必须要引用了如下程序集中的一个或多个程序集，列表如下：
+```
+Microsoft.AspNet.Mvc
+Microsoft.AspNet.Mvc.Core
+Microsoft.AspNet.Mvc.ModelBinding
+Microsoft.AspNet.Mvc.Razor
+Microsoft.AspNet.Mvc.Razor.Host
+Microsoft.AspNet.Mvc.TagHelpers
+Microsoft.AspNet.Mvc.Xml
+Microsoft.AspNet.PageExecutionInstrumentation.Interfaces
+```
+
+也就是说，如果你定义了一个引用了`Microsoft.AspNet.Mvc`的DLL类库的话，其里面的POCO Controller都会被认为是MVC的Controller。换句话说，如果你定义的POCO Controller类没有引用上述程序集中的任意一个程序集，那这些Controller类不会被认为是MVC的Controller。
+
+##程序集的查找
+目前有两种方式可以自定义Controller的查找机制，第一种是继承`IAssemblyProvider`实现`CandidateAssemblies`方法（或重载`DefaultAssemblyProvider`），来定义自己的逻辑。接口定义如下：
+```csharp
+public interface IAssemblyProvider
+{
+    IEnumerable<Assembly> CandidateAssemblies { get; }
+}
+```
+
+另外一种方式，可能相对来说更简单一些，那就是使用`IServicesCollection`上定义的扩展方法来定义要查找的程序集：
+```csharp
+services.AddMvc().WithControllersAsServices(new[]
+{
+    typeof(MyController).Assembly,
+    typeof(ExternalPocoController).Assembly
+});
+```
+使用上述代码后，系统将会把`DefaultAssemblyProvider`切换成`FixedSetAssemblyProvider`来实现上述判断机制，即：在固定范围内的程序集里进行查找。
+
+##程序集的筛选
+确定了程序集以后，另外一个问题就来了，如何判断一个程序集是否引用了上述MVC必要条件中所列的程序集呢？答案是，`Microsoft.Framework.Runtime`中的`ILibraryManager`接口实例的`GetReferencingLibraries`方法，可以查找有多少个程序集引用了上述列表中的其中一个程序集。例如，可以根据`Microsoft.AspNet.Mvc`程序集，来查找有多少个程序集引用了该程序集，示例如下：
+```csharp
+var col = this.Resolver.GetRequiredService<ILibraryManager>();
+var data = col.GetReferencingLibraries("Microsoft.AspNet.Mvc");
+```
+该功能在DefaultAssemblyProvider默认实现类中的使用代码如下：
+```csharp
+protected virtual IEnumerable<ILibraryInformation> GetCandidateLibraries()
+{
+    if (ReferenceAssemblies == null)
+    {
+        return Enumerable.Empty<ILibraryInformation>();
+    }
+
+    // GetReferencingLibraries returns the transitive closure of referencing assemblies
+    // for a given assembly.
+    return ReferenceAssemblies.SelectMany(_libraryManager.GetReferencingLibraries)
+                                .Distinct()
+                                .Where(IsCandidateLibrary);
+}
+```
+
+##Controller的判断
+
+确定了符合必要条件的程序集之后，就可以遍历该程序集内所有的类型，并接着判断该类型是否是Controller了。在新版的Controller判断上，实现该功能的是一个`IControllerTypeProvider`接口，该接口提供了一个`ControllerTypes`只读属性用于获取所有定义的Controller，接口定义如下：
+```csharp
+public interface IControllerTypeProvider
+{
+    IEnumerable<TypeInfo> ControllerTypes { get; }
+}
+```
+
+`DefaultControllerTypeProvider`是该接口的默认实现，在查询符合条件的Controller的时候，该默认实现类定义了一个`IsController`方法，用于判断一个类型是否是Controller，具体逻辑如下：
+```csharp
+protected internal virtual bool IsController([NotNull] TypeInfo typeInfo,
+                                             [NotNull] ISet<Assembly> candidateAssemblies)
+{
+    if (!typeInfo.IsClass)  // 该类型必须是一个类
+    {
+        return false;
+    }
+    if (typeInfo.IsAbstract) // 该类必须不是抽象类
+    {
+        return false;
+    }
+    // We only consider public top-level classes as controllers. IsPublic returns false for nested
+    // classes, regardless of visibility modifiers
+    if (!typeInfo.IsPublic) // 该类必须是一个Public类（并且不嵌套），嵌套类不能作为Controller
+    {
+        return false;
+    }
+    if (typeInfo.ContainsGenericParameters) // 该类不能是泛型类
+    {
+        return false;
+    }
+    if (!typeInfo.Name.EndsWith(ControllerTypeName, StringComparison.OrdinalIgnoreCase) &&
+        !DerivesFromController(typeInfo, candidateAssemblies)) // 该类以Controller结尾，或继承于Controller基类，或其父类也是Controller。
+    {
+        return false;
+    }
+    if (typeInfo.IsDefined(typeof(NonControllerAttribute))) // 该类不能设置NonControllerAttribute特性
+    {
+        return false;
+    }
+
+    return true;
+}
+```
+
+你也可以自己实现`IControllerTypeProvider`接口来定义自己的Controller判断逻辑，不过和固定某些程序集类型，MVC在`IServicesCollection`上也提供了一个扩展方法，用于限制一些Controller特定类型，示例如下：
+```csharp
+services.AddMvc().WithControllersAsServices(new[]
+    {
+        typeof(MyController),
+        typeof(ExternalPocoController)
+    });
+
+```
+使用上述代码后，系统将会把`DefaultControllerTypeProvider`切换成`FixedSetControllerTypeProvider`来实现上述判断机制，即：限制某些特定的类作为Controller，其它类型都不能作为Controller。
+
+#Action的查找机制
+Action的选择则是通过`IActionSelector`接口的默认实现类`DefaultActionSelector`来实现的，在实现的`SelectAsync`方法中，通过上下文和路由数据选择最匹配的Action，示意代码如下：
+```csharp
+public Task<ActionDescriptor> SelectAsync([NotNull] RouteContext context)
+{
+   // ...
+}
+```
+还有一个地方会判断一个方法是否是Action，那就是`IActionModelBuilder`接口，该接口的默认实现为`DefaultActionModelBuilder`类，实现方法如下：
+```csharp
+public IEnumerable<ActionModel> BuildActionModels([NotNull] TypeInfo typeInfo,
+                                                  [NotNull] MethodInfo methodInfo)
+{
+    if (!IsAction(typeInfo, methodInfo))
+    {
+        return Enumerable.Empty<ActionModel>();
+    }
+    // ....省略其它代码
+}
+```
+该实现方法，通过一个内部的`IsAction`方法来判断该方法是否是一个真正的Action方法，具体代码如下：
+```csharp
+protected virtual bool IsAction([NotNull] TypeInfo typeInfo, [NotNull] MethodInfo methodInfo)
+{
+    // The SpecialName bit is set to flag members that are treated in a special way by some compilers
+    // (such as property accessors and operator overloading methods).
+    if (methodInfo.IsSpecialName)  // 不能是特殊名称（如重载的操作符或属性访问器）
+    {
+        return false;
+    }
+
+    if (methodInfo.IsDefined(typeof(NonActionAttribute)))  // 不能声明NonActionAttribute特性
+    {
+        return false;
+    }
+
+    // Overriden methods from Object class, e.g. Equals(Object), GetHashCode(), etc., are not valid.
+    if (methodInfo.GetBaseDefinition().DeclaringType == typeof(object)) //不能是重载的方法，比如Equals和GetHashCode
+    {
+        return false;
+    }
+
+    // Dispose method implemented from IDisposable is not valid
+    if (IsIDisposableMethod(methodInfo, typeInfo))  // 不能是Dispose方法
+    {
+        return false;
+    }
+
+    if (methodInfo.IsStatic) // 不能是静态方法
+    {
+        return false;
+    }
+
+    if (methodInfo.IsAbstract) // 不能是抽象方法
+    {
+        return false;
+    }
+
+    if (methodInfo.IsConstructor)  // 不能是构造函数
+    {
+        return false;
+    }
+
+    if (methodInfo.IsGenericMethod)  // 不能是泛型方法
+    {
+        return false;
+    }
+
+    return
+        methodInfo.IsPublic;   // 必须是Public方法
+}
+```
+
+以上内容就是关于Controller和Action查找相关的重要代码，详细原理步骤，请参考`Microsoft.AspNet.Mvc.Core`程序集下的所有源码。
