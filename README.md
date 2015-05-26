@@ -22,7 +22,7 @@
 
 [解读ASP.NET 5 & MVC6系列（10）：Controller与Action][10]
 
-[解读ASP.NET 5 & MVC6系列（11）：Routing路由]
+[解读ASP.NET 5 & MVC6系列（11）：Routing路由][11]
 
 [解读ASP.NET 5 & MVC6系列（12）：基于Lamda表达式的强类型Routing实现]
 
