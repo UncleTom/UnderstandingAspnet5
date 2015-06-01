@@ -28,9 +28,9 @@
 
 [解读ASP.NET 5 & MVC6系列（13）：TagHelper][13]
 
-[解读ASP.NET 5 & MVC6系列（14）：View Component ]
+[解读ASP.NET 5 & MVC6系列（14）：View Component ][14]
 
-[解读ASP.NET 5 & MVC6系列（15）：MvcOptions配置]
+[解读ASP.NET 5 & MVC6系列（15）：MvcOptions配置][15]
 
 [解读ASP.NET 5 & MVC6系列（16）：自定义View视图文件查找逻辑]
 
