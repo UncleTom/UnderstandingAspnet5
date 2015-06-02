@@ -32,7 +32,7 @@
 
 [解读ASP.NET 5 & MVC6系列（15）：MvcOptions配置][15]
 
-[解读ASP.NET 5 & MVC6系列（16）：自定义View视图文件查找逻辑]
+[解读ASP.NET 5 & MVC6系列（16）：自定义View视图文件查找逻辑][16]
 
 [解读ASP.NET 5 & MVC6系列（17）：MVC中的其他新特性]
 
